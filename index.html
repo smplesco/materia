@@ -422,6 +422,24 @@
   ::-webkit-scrollbar-track { background: var(--surface); }
   ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
 
+
+  /* ── Credit Footer ─────────────────────────────────────── */
+  .credit {
+    text-align: center;
+    margin-top: 40px;
+    padding-bottom: 20px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+  }
+
+  .credit:hover {
+    opacity: 1;
+  }
+
   /* ── Responsive ────────────────────────────────────────── */
   @media (max-width: 640px) {
     .col-headers { grid-template-columns: 86px repeat(10, 1fr); gap: 2px; }
@@ -536,7 +554,13 @@
     </div>
   </div>
 
+
+  <footer class="credit">
+    made by smplesco
+  </footer>
+
 </div><!-- /app -->
+
 
 <!-- ── Modals ─────────────────────────────────────────────── -->
 
