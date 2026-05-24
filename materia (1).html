@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MATERIA — The Materials Guessing Game</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  /* ── CSS Variables ─────────────────────────────────────── */
+  :root {
+    --bg:           #090a0d;
+    --surface:      #11131a;
+    --surface2:     #191c25;
+    --border:       #252836;
+    --border2:      #353848;
+    --text:         #e2e4ed;
+    --text-muted:   #60657a;
+    --text-dim:     #8c93a8;
+    --accent:       #7c6aff;
+    --accent2:      #5b4de0;
+    --green:        #3ecf8e;
+    --green-bg:     #0e2018;
+    --yellow:       #e0b050;
+    --yellow-bg:    #221a08;
+    --red:          #e05555;
+    --red-bg:       #200e0e;
+    --blue:         #4da8f5;
+    --blue-bg:      #0a1a28;
+    --gray:         #4e5368;
+    --gray-bg:      #141620;
+    --radius:       10px;
+    --radius-sm:    7px;
+    --glow:         0 0 0 3px rgba(124,106,255,0.15);
+    --shadow:       0 8px 32px rgba(0,0,0,0.6);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 14px; scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 400;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse 70% 40% at 15% 10%, rgba(124,106,255,0.05) 0%, transparent 55%),
+      radial-gradient(ellipse 50% 40% at 85% 85%, rgba(62,207,142,0.03) 0%, transparent 55%);
+    pointer-events: none; z-index: 0;
+  }
+
+  /* ── Layout ────────────────────────────────────────────── */
+  #app {
+    position: relative; z-index: 1;
+    max-width: 880px; margin: 0 auto;
+    padding: 0 16px 80px;
+  }
+
+  /* ── Header ────────────────────────────────────────────── */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 0 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 20px;
+  }
+  .logo {
+    font-size: 1.5rem; font-weight: 600; letter-spacing: 0.18em;
+    background: linear-gradient(135deg, #d8daed 0%, var(--accent) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .logo span {
+    font-family: 'DM Mono', monospace; font-size: 0.55em; font-weight: 300;
+    vertical-align: middle; -webkit-text-fill-color: var(--text-muted);
+    margin-left: 10px; letter-spacing: 0.06em;
+  }
+  .header-btns { display: flex; gap: 6px; }
+  .icon-btn {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text-dim); border-radius: var(--radius-sm);
+    width: 36px; height: 36px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.18s; font-size: 1rem;
+    font-family: 'DM Mono', monospace; font-weight: 400;
+  }
+  .icon-btn:hover { background: var(--border); color: var(--text); border-color: var(--border2); }
+
+  /* ── Stats Bar ─────────────────────────────────────────── */
+  .stats-bar { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; align-items: center; }
+  .stat-chip {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 100px; padding: 4px 12px;
+    font-family: 'DM Mono', monospace; font-size: 0.72rem; font-weight: 300;
+    color: var(--text-dim); display: flex; align-items: center; gap: 5px;
+  }
+  .stat-chip b { color: var(--text); font-weight: 500; }
+
+  /* ── Action Buttons Row ────────────────────────────────── */
+  .action-row {
+    display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap;
+  }
+  .action-btn {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text-dim); border-radius: var(--radius-sm);
+    padding: 7px 14px; cursor: pointer; font-family: 'DM Sans', sans-serif;
+    font-size: 0.78rem; font-weight: 500; letter-spacing: 0.02em;
+    transition: all 0.18s; display: flex; align-items: center; gap: 6px;
+  }
+  .action-btn:hover { background: var(--border); color: var(--text); border-color: var(--border2); }
+  .action-btn.hint-btn { border-color: rgba(224,176,80,0.3); color: var(--yellow); }
+  .action-btn.hint-btn:hover { background: var(--yellow-bg); border-color: var(--yellow); }
+  .action-btn.reveal-btn { border-color: rgba(224,85,85,0.3); color: var(--red); }
+  .action-btn.reveal-btn:hover { background: var(--red-bg); border-color: var(--red); }
+  .action-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  /* ── Input Area ────────────────────────────────────────── */
+  .input-area { position: relative; margin-bottom: 18px; }
+  .input-wrapper { display: flex; gap: 8px; align-items: center; }
+  #guess-input {
+    flex: 1;
+    background: var(--surface); border: 1.5px solid var(--border);
+    color: var(--text); font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem; font-weight: 400;
+    padding: 12px 16px; border-radius: var(--radius);
+    outline: none; transition: all 0.2s;
+    text-transform: capitalize;
+  }
+  #guess-input:focus { border-color: var(--accent); box-shadow: var(--glow); }
+  #guess-input::placeholder { color: var(--text-muted); }
+  #guess-btn {
+    background: var(--accent); color: #fff; border: none;
+    border-radius: var(--radius); padding: 12px 20px;
+    font-family: 'DM Sans', sans-serif; font-size: 0.85rem; font-weight: 600;
+    letter-spacing: 0.06em; cursor: pointer; transition: all 0.18s; white-space: nowrap;
+  }
+  #guess-btn:hover { background: var(--accent2); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(124,106,255,0.4); }
+  #guess-btn:active { transform: translateY(0); }
+  #guess-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+
+  /* ── Autocomplete ──────────────────────────────────────── */
+  #autocomplete {
+    position: absolute; top: calc(100% + 5px); left: 0;
+    width: 100%; background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow);
+    z-index: 100; max-height: 220px; overflow-y: auto; display: none;
+  }
+  #autocomplete.open { display: block; animation: fadeDown 0.12s ease; }
+  .ac-item {
+    padding: 10px 14px; cursor: pointer;
+    display: flex; align-items: center; gap: 10px;
+    transition: background 0.1s; font-size: 0.9rem;
+    border-bottom: 1px solid var(--border); font-weight: 400;
+  }
+  .ac-item:last-child { border-bottom: none; }
+  .ac-item:hover, .ac-item.active { background: var(--border); }
+  .ac-cat {
+    font-size: 0.62rem; font-family: 'DM Mono', monospace; font-weight: 400;
+    text-transform: uppercase; letter-spacing: 0.07em;
+    padding: 2px 6px; border-radius: 4px;
+    background: var(--surface); color: var(--text-muted);
+  }
+  .ac-already { margin-left: auto; font-size: 0.66rem; color: var(--text-muted); font-family: 'DM Mono', monospace; }
+
+  /* ── Toast ─────────────────────────────────────────────── */
+  #toast {
+    position: fixed; top: 18px; left: 50%; transform: translateX(-50%) translateY(-70px);
+    background: var(--surface2); border: 1px solid var(--border2);
+    color: var(--text); padding: 9px 18px; border-radius: 100px;
+    font-size: 0.82rem; font-weight: 500; z-index: 999;
+    transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    box-shadow: var(--shadow); pointer-events: none; font-family: 'DM Sans', sans-serif;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+  #toast.error { border-color: var(--red); color: var(--red); }
+  #toast.success { border-color: var(--green); color: var(--green); }
+  #toast.hint { border-color: var(--yellow); color: var(--yellow); }
+
+  /* ── Column Headers ────────────────────────────────────── */
+  .col-headers {
+    display: grid;
+    grid-template-columns: 114px repeat(10, 1fr);
+    gap: 3px; margin-bottom: 5px; padding: 0 1px;
+  }
+  .col-h {
+    font-size: 0.58rem; font-family: 'DM Mono', monospace; font-weight: 400;
+    text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--text-muted); text-align: center; line-height: 1.2;
+  }
+  .col-h:first-child { text-align: left; padding-left: 8px; }
+
+  /* ── Guess Rows ────────────────────────────────────────── */
+  #guesses { display: flex; flex-direction: column; gap: 4px; margin-bottom: 18px; }
+  .guess-row {
+    display: grid;
+    grid-template-columns: 114px repeat(10, 1fr);
+    gap: 3px;
+    animation: rowReveal 0.35s ease forwards;
+    opacity: 0;
+  }
+  @keyframes rowReveal {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .guess-name {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 5px 9px;
+    display: flex; align-items: center;
+    font-size: 0.78rem; font-weight: 500;
+    text-transform: capitalize; overflow: hidden;
+    white-space: nowrap; text-overflow: ellipsis;
+  }
+  .guess-cell {
+    border-radius: var(--radius-sm); padding: 3px 2px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-family: 'DM Mono', monospace; font-weight: 400;
+    font-size: 0.6rem; gap: 1px;
+    border: 1px solid transparent; min-height: 44px; position: relative;
+    transition: background 0.25s, border-color 0.25s;
+  }
+  .cell-val   { font-size: 0.72rem; font-weight: 500; }
+  .cell-arrow { font-size: 0.75rem; line-height: 1; }
+  .cell-green  { background: var(--green-bg);  border-color: rgba(62,207,142,0.5);  color: var(--green); }
+  .cell-yellow { background: var(--yellow-bg); border-color: rgba(224,176,80,0.5);  color: var(--yellow); }
+  .cell-red    { background: var(--red-bg);    border-color: rgba(224,85,85,0.5);   color: var(--red); }
+  .cell-blue   { background: var(--blue-bg);   border-color: rgba(77,168,245,0.5);  color: var(--blue); }
+  .cell-gray   { background: var(--gray-bg);   border-color: rgba(78,83,104,0.5);   color: var(--gray); }
+
+  /* ── Radar ─────────────────────────────────────────────── */
+  #radar-section { display: flex; gap: 14px; margin-bottom: 18px; flex-wrap: wrap; }
+  .radar-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px; flex: 1; min-width: 200px;
+  }
+  .radar-card h3 {
+    font-size: 0.62rem; font-family: 'DM Mono', monospace; font-weight: 400;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--text-muted); margin-bottom: 10px; text-align: center;
+  }
+  .radar-canvas-wrap { position: relative; width: 100%; max-width: 280px; margin: 0 auto; aspect-ratio: 1; }
+  .radar-legend {
+    display: flex; gap: 12px; justify-content: center; margin-top: 10px; flex-wrap: wrap;
+  }
+  .radar-legend-item {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 0.6rem; font-family: 'DM Mono', monospace; font-weight: 300; color: var(--text-muted);
+  }
+  .radar-legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  /* ── Flavor Text ───────────────────────────────────────── */
+  #flavor-area {
+    background: var(--surface); border: 1px solid var(--border);
+    border-left: 2px solid var(--accent);
+    border-radius: var(--radius); padding: 12px 16px;
+    margin-bottom: 18px; display: none;
+  }
+  #flavor-area .flavor-name {
+    font-size: 0.6rem; font-family: 'DM Mono', monospace; font-weight: 400;
+    text-transform: uppercase; color: var(--accent); letter-spacing: 0.1em; margin-bottom: 3px;
+  }
+  #flavor-area p { font-size: 0.82rem; color: var(--text-dim); line-height: 1.65; font-weight: 300; }
+
+  /* ── Legend ────────────────────────────────────────────── */
+  .legend { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .legend-item {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 0.64rem; font-family: 'DM Mono', monospace; font-weight: 300; color: var(--text-muted);
+  }
+  .legend-dot { width: 9px; height: 9px; border-radius: 3px; border: 1px solid; }
+
+  /* ── Win Screen ────────────────────────────────────────── */
+  #win-screen {
+    display: none; background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 30px 22px;
+    text-align: center; margin-bottom: 18px;
+  }
+  #win-screen.show { display: block; animation: rowReveal 0.4s ease; }
+  .win-emoji { font-size: 2.8rem; margin-bottom: 8px; }
+  .win-title { font-size: 1.7rem; font-weight: 600; margin-bottom: 5px; letter-spacing: 0.02em; }
+  .win-sub { color: var(--text-dim); font-size: 0.85rem; margin-bottom: 14px; font-weight: 300; }
+  .win-material {
+    display: inline-block; background: var(--green-bg); border: 1px solid rgba(62,207,142,0.4);
+    color: var(--green); border-radius: var(--radius-sm);
+    padding: 5px 14px; font-weight: 500; font-size: 1rem;
+    text-transform: capitalize; margin-bottom: 18px;
+  }
+  .win-stats { display: flex; gap: 18px; justify-content: center; margin-bottom: 20px; flex-wrap: wrap; }
+  .win-stat { text-align: center; }
+  .win-stat-num { font-size: 1.9rem; font-weight: 600; color: var(--accent); }
+  .win-stat-label { font-size: 0.62rem; font-family: 'DM Mono', monospace; font-weight: 300; color: var(--text-muted); text-transform: uppercase; }
+  .win-btn-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  #restart-btn {
+    background: var(--accent); color: #fff; border: none;
+    border-radius: var(--radius); padding: 11px 24px;
+    font-family: 'DM Sans', sans-serif; font-size: 0.88rem; font-weight: 600;
+    cursor: pointer; transition: all 0.18s; letter-spacing: 0.04em;
+  }
+  #restart-btn:hover { background: var(--accent2); transform: translateY(-1px); box-shadow: 0 5px 18px rgba(124,106,255,0.4); }
+
+  /* ── Modal ─────────────────────────────────────────────── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.78); z-index: 500;
+    align-items: center; justify-content: center; padding: 16px;
+  }
+  .modal-overlay.open { display: flex; animation: fadeIn 0.18s ease; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: var(--radius); padding: 26px 22px;
+    max-width: 520px; width: 100%; max-height: 90vh;
+    overflow-y: auto; box-shadow: var(--shadow);
+    animation: modalIn 0.22s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  .modal.modal-wide { max-width: 800px; }
+  @keyframes modalIn { from { transform: scale(0.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .modal-header {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px;
+  }
+  .modal-title { font-size: 1.1rem; font-weight: 600; letter-spacing: 0.02em; }
+  .modal-close {
+    background: none; border: none; color: var(--text-muted);
+    font-size: 1.3rem; cursor: pointer; padding: 4px; transition: color 0.18s; line-height: 1;
+  }
+  .modal-close:hover { color: var(--text); }
+  .modal-section { margin-bottom: 18px; }
+  .modal-section h3 {
+    font-size: 0.62rem; font-family: 'DM Mono', monospace; font-weight: 400;
+    text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); margin-bottom: 8px;
+  }
+  .modal-section p, .modal-section li {
+    font-size: 0.85rem; color: var(--text-dim); line-height: 1.65; font-weight: 300;
+  }
+  .modal-section ul { padding-left: 16px; }
+  .modal-section li { margin-bottom: 3px; }
+  .feedback-ex { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+  .feedback-ex .swatch {
+    width: 26px; height: 26px; border-radius: 5px; border: 1px solid;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.72rem; font-weight: 600; font-family: 'DM Mono', monospace;
+  }
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .stats-grid-item { text-align: center; }
+  .stats-grid-num { font-size: 1.9rem; font-weight: 600; }
+  .stats-grid-label { font-size: 0.6rem; font-family: 'DM Mono', monospace; font-weight: 300; color: var(--text-muted); text-transform: uppercase; }
+  .streak-bar { height: 3px; background: var(--border); border-radius: 2px; margin-top: 10px; overflow: hidden; }
+  .streak-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.6s ease; }
+  .dist-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .dist-num { font-family: 'DM Mono', monospace; font-size: 0.7rem; color: var(--text-muted); width: 12px; }
+  .dist-bar-wrap { flex: 1; height: 18px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+  .dist-bar { height: 100%; background: var(--accent); border-radius: 3px; display: flex; align-items: center; padding-left: 6px; font-size: 0.6rem; font-family: 'DM Mono', monospace; color: #fff; transition: width 0.5s ease; min-width: 18px; }
+
+  /* ── Materials Table (Encyclopedia) ───────────────────── */
+  .enc-filters {
+    display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px;
+  }
+  .enc-filter {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text-dim); border-radius: 100px; padding: 4px 12px;
+    font-size: 0.72rem; font-family: 'DM Mono', monospace; font-weight: 300;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .enc-filter.active { color: var(--text); border-color: var(--accent); background: rgba(124,106,255,0.1); }
+  .enc-search {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); border-radius: var(--radius-sm); padding: 7px 12px;
+    font-family: 'DM Sans', sans-serif; font-size: 0.82rem; font-weight: 400;
+    outline: none; transition: all 0.18s; width: 100%; margin-bottom: 12px;
+  }
+  .enc-search:focus { border-color: var(--accent); }
+  .enc-table-wrap { overflow-x: auto; }
+  .enc-table {
+    width: 100%; border-collapse: collapse; font-size: 0.72rem;
+    font-family: 'DM Mono', monospace; font-weight: 300;
+  }
+  .enc-table th {
+    text-align: left; padding: 6px 8px; font-size: 0.58rem; font-weight: 400;
+    text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);
+    border-bottom: 1px solid var(--border); position: sticky; top: 0;
+    background: var(--surface); white-space: nowrap; cursor: pointer;
+  }
+  .enc-table th:hover { color: var(--text); }
+  .enc-table th.sorted { color: var(--accent); }
+  .enc-table td {
+    padding: 5px 8px; border-bottom: 1px solid var(--border);
+    white-space: nowrap; color: var(--text-dim); font-weight: 300;
+  }
+  .enc-table tr:hover td { background: var(--surface2); }
+  .enc-table td:first-child { font-weight: 500; color: var(--text); text-transform: capitalize; }
+  .enc-cat-badge {
+    display: inline-block; padding: 1px 6px; border-radius: 4px;
+    font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.05em;
+    border: 1px solid;
+  }
+  .prop-bar-cell { display: flex; align-items: center; gap: 5px; }
+  .prop-bar { height: 4px; border-radius: 2px; background: var(--accent); }
+
+  /* ── Hint revealed badge ───────────────────────────────── */
+  .hint-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: var(--yellow-bg); border: 1px solid rgba(224,176,80,0.4);
+    color: var(--yellow); border-radius: var(--radius-sm);
+    padding: 3px 8px; font-size: 0.68rem; font-family: 'DM Mono', monospace;
+    margin-bottom: 10px; font-weight: 400;
+  }
+
+  /* ── Target profile overlay on radar (dots only) ─────── */
+  /* handled via chart dataset */
+
+  /* ── Animations ────────────────────────────────────────── */
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes fadeDown { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ── Scrollbar ─────────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: var(--surface); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  /* ── Responsive ────────────────────────────────────────── */
+  @media (max-width: 640px) {
+    .col-headers { grid-template-columns: 86px repeat(10, 1fr); gap: 2px; }
+    .guess-row   { grid-template-columns: 86px repeat(10, 1fr); gap: 2px; }
+    .guess-name  { font-size: 0.68rem; padding: 4px 7px; }
+    .guess-cell  { min-height: 38px; }
+    .cell-val    { font-size: 0.64rem; }
+    .stats-grid  { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 400px) {
+    .col-headers { grid-template-columns: 68px repeat(10, 1fr); gap: 2px; }
+    .guess-row   { grid-template-columns: 68px repeat(10, 1fr); gap: 2px; }
+    .guess-name  { font-size: 0.6rem; padding: 3px 5px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <div class="logo">MATERIA <span>// guess the material</span></div>
+    <div class="header-btns">
+      <button class="icon-btn" id="enc-btn" title="Materials Encyclopedia">≡</button>
+      <button class="icon-btn" id="help-btn" title="How to play">?</button>
+      <button class="icon-btn" id="stats-btn" title="Statistics">▦</button>
+    </div>
+  </header>
+
+  <div class="stats-bar">
+    <div class="stat-chip">Guesses: <b id="guess-count">0</b></div>
+    <div class="stat-chip">Streak: <b id="streak-count">0</b></div>
+    <div class="stat-chip" id="cat-chip" style="display:none">Category: <b id="cat-hint">—</b></div>
+  </div>
+
+  <!-- Hint revealed -->
+  <div id="hint-badges" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;"></div>
+
+  <!-- Action buttons -->
+  <div class="action-row" id="action-row">
+    <button class="action-btn hint-btn" id="hint-btn">💡 Hint</button>
+    <button class="action-btn reveal-btn" id="reveal-btn">👁 Reveal Answer</button>
+  </div>
+
+  <!-- Win Screen -->
+  <div id="win-screen">
+    <div class="win-emoji" id="win-emoji">🎉</div>
+    <div class="win-title" id="win-title">You Got It!</div>
+    <div class="win-sub" id="win-sub">The material was</div>
+    <div class="win-material" id="win-material"></div>
+    <div class="win-stats">
+      <div class="win-stat"><div class="win-stat-num" id="ws-guesses">—</div><div class="win-stat-label">Guesses</div></div>
+      <div class="win-stat"><div class="win-stat-num" id="ws-streak">—</div><div class="win-stat-label">Streak</div></div>
+    </div>
+    <p id="win-flavor" style="font-size:0.82rem;color:var(--text-dim);margin-bottom:18px;max-width:360px;margin-inline:auto;line-height:1.65;font-weight:300"></p>
+    <div class="win-btn-row">
+      <button id="restart-btn">↺ Play Again</button>
+    </div>
+  </div>
+
+  <!-- Input -->
+  <div class="input-area" id="input-area">
+    <div class="input-wrapper">
+      <input type="text" id="guess-input" placeholder="Type a material name…" autocomplete="off" spellcheck="false">
+      <button id="guess-btn">GUESS</button>
+    </div>
+    <div id="autocomplete"></div>
+  </div>
+
+  <!-- Flavor -->
+  <div id="flavor-area">
+    <div class="flavor-name" id="flavor-name"></div>
+    <p id="flavor-text"></p>
+  </div>
+
+  <!-- Legend -->
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--green-bg);border-color:rgba(62,207,142,0.5)"></div>Exact</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--yellow-bg);border-color:rgba(224,176,80,0.5)"></div>Close ±1</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--red-bg);border-color:rgba(224,85,85,0.5)"></div>Too high ↓</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--blue-bg);border-color:rgba(77,168,245,0.5)"></div>Too low ↑</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--gray-bg);border-color:rgba(78,83,104,0.5)"></div>Wrong cat.</div>
+  </div>
+
+  <!-- Column Headers -->
+  <div class="col-headers">
+    <div class="col-h">Material</div>
+    <div class="col-h">Cat.</div>
+    <div class="col-h">Hard</div>
+    <div class="col-h">Flex</div>
+    <div class="col-h">Dense</div>
+    <div class="col-h">WaterR</div>
+    <div class="col-h">Cond.</div>
+    <div class="col-h">Insul.</div>
+    <div class="col-h">Trans.</div>
+    <div class="col-h">Dura.</div>
+    <div class="col-h">Cost</div>
+  </div>
+
+  <div id="guesses"></div>
+
+  <!-- Radar -->
+  <div id="radar-section">
+    <div class="radar-card" id="radar-card" style="display:none">
+      <h3 id="radar-label">Material Radar</h3>
+      <div class="radar-canvas-wrap">
+        <canvas id="radarChart"></canvas>
+      </div>
+      <div class="radar-legend">
+        <div class="radar-legend-item"><div class="radar-legend-dot" style="background:#7c6aff"></div>Last guess</div>
+        <div class="radar-legend-item"><div class="radar-legend-dot" style="background:#3ecf8e;opacity:0.8"></div>Known correct</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<!-- ── Modals ─────────────────────────────────────────────── -->
+
+<!-- Help Modal -->
+<div class="modal-overlay" id="help-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">How to Play</span>
+      <button class="modal-close" data-close="help-modal">✕</button>
+    </div>
+    <div class="modal-section">
+      <h3>Goal</h3>
+      <p>Guess the hidden material. After each guess, you'll receive color-coded feedback comparing your guess to the target material across 10 properties.</p>
+    </div>
+    <div class="modal-section">
+      <h3>Feedback Colors</h3>
+      <div class="feedback-ex"><div class="swatch cell-green">8</div><span style="font-size:0.83rem;color:var(--text-dim)"><b style="color:var(--green)">Green</b> — Exact match on this property</span></div>
+      <div class="feedback-ex"><div class="swatch cell-yellow">↓7</div><span style="font-size:0.83rem;color:var(--text-dim)"><b style="color:var(--yellow)">Yellow</b> — Close! Within 1 point of target</span></div>
+      <div class="feedback-ex"><div class="swatch cell-red">↓9</div><span style="font-size:0.83rem;color:var(--text-dim)"><b style="color:var(--red)">Red ↓</b> — Your guess is too HIGH</span></div>
+      <div class="feedback-ex"><div class="swatch cell-blue">↑3</div><span style="font-size:0.83rem;color:var(--text-dim)"><b style="color:var(--blue)">Blue ↑</b> — Your guess is too LOW</span></div>
+      <div class="feedback-ex"><div class="swatch cell-gray">—</div><span style="font-size:0.83rem;color:var(--text-dim)"><b style="color:var(--gray)">Gray</b> — Wrong category</span></div>
+    </div>
+    <div class="modal-section">
+      <h3>Properties</h3>
+      <ul>
+        <li><b>Category</b> — Plant, Animal, Metal, Mineral, Synthetic</li>
+        <li><b>Hardness</b> — Resistance to scratching (1=butter, 10=diamond)</li>
+        <li><b>Flexibility</b> — Bends without breaking</li>
+        <li><b>Density</b> — Weight per unit volume</li>
+        <li><b>Water Resistance</b> — Repels water</li>
+        <li><b>Conductivity</b> — Conducts electricity</li>
+        <li><b>Insulation</b> — Thermal insulation ability</li>
+        <li><b>Transparency</b> — How see-through it is</li>
+        <li><b>Durability</b> — Long-term wear resistance</li>
+        <li><b>Cost</b> — Relative material cost</li>
+      </ul>
+    </div>
+    <div class="modal-section">
+      <h3>Tools</h3>
+      <ul>
+        <li><b>💡 Hint</b> — Reveals one correct property of the target</li>
+        <li><b>👁 Reveal</b> — Shows the answer and starts over</li>
+        <li><b>≡ Encyclopedia</b> — Browse all materials and their properties</li>
+        <li><b>Radar chart</b> — Shows your last guess and all confirmed correct values in green</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- Stats Modal -->
+<div class="modal-overlay" id="stats-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Statistics</span>
+      <button class="modal-close" data-close="stats-modal">✕</button>
+    </div>
+    <div class="modal-section">
+      <h3>Overall</h3>
+      <div class="stats-grid">
+        <div class="stats-grid-item"><div class="stats-grid-num" id="st-played">0</div><div class="stats-grid-label">Played</div></div>
+        <div class="stats-grid-item"><div class="stats-grid-num" id="st-winpct">0%</div><div class="stats-grid-label">Win %</div></div>
+        <div class="stats-grid-item"><div class="stats-grid-num" id="st-streak">0</div><div class="stats-grid-label">Streak</div></div>
+        <div class="stats-grid-item"><div class="stats-grid-num" id="st-maxstreak">0</div><div class="stats-grid-label">Max Streak</div></div>
+      </div>
+      <div class="streak-bar"><div class="streak-fill" id="st-streakbar" style="width:0%"></div></div>
+    </div>
+    <div class="modal-section">
+      <h3>Guess Distribution</h3>
+      <div id="st-dist"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Encyclopedia Modal -->
+<div class="modal-overlay" id="enc-modal">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <span class="modal-title">Materials Encyclopedia</span>
+      <button class="modal-close" data-close="enc-modal">✕</button>
+    </div>
+    <input type="text" class="enc-search" id="enc-search" placeholder="Search materials…">
+    <div class="enc-filters" id="enc-filters">
+      <span class="enc-filter active" data-cat="All">All</span>
+      <span class="enc-filter" data-cat="Metal">Metal</span>
+      <span class="enc-filter" data-cat="Mineral">Mineral</span>
+      <span class="enc-filter" data-cat="Plant">Plant</span>
+      <span class="enc-filter" data-cat="Animal">Animal</span>
+      <span class="enc-filter" data-cat="Synthetic">Synthetic</span>
+    </div>
+    <div class="enc-table-wrap">
+      <table class="enc-table" id="enc-table">
+        <thead>
+          <tr>
+            <th data-col="name">Name ⇅</th>
+            <th data-col="category">Cat.</th>
+            <th data-col="hardness">Hard</th>
+            <th data-col="flexibility">Flex</th>
+            <th data-col="density">Dense</th>
+            <th data-col="waterResistance">WaterR</th>
+            <th data-col="conductivity">Cond.</th>
+            <th data-col="insulation">Insul.</th>
+            <th data-col="transparency">Trans.</th>
+            <th data-col="durability">Dura.</th>
+            <th data-col="cost">Cost</th>
+            <th>Texture</th>
+          </tr>
+        </thead>
+        <tbody id="enc-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+//  MATERIA — Complete Game Logic
+// ════════════════════════════════════════════════════════════
+
+// ── Audio ─────────────────────────────────────────────────────
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let ac = null;
+function getAC() { if (!ac) try { ac = new AudioCtx(); } catch(e){} return ac; }
+function playTone(freq, type='sine', dur=0.08, gain=0.1, delay=0) {
+  const ctx = getAC(); if (!ctx) return;
+  try {
+    const osc = ctx.createOscillator(), g = ctx.createGain();
+    osc.connect(g); g.connect(ctx.destination);
+    osc.type = type; osc.frequency.value = freq;
+    const t = ctx.currentTime + delay;
+    g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(gain,t+0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    osc.start(t); osc.stop(t+dur+0.01);
+  } catch(e){}
+}
+function sfxGuess()   { playTone(440,'sine',0.06,0.07); }
+function sfxCorrect() { [0,0.1,0.2].forEach((d,i)=>playTone([523,659,784][i],'sine',0.15,0.1,d)); }
+function sfxWrong()   { playTone(200,'sawtooth',0.1,0.05); }
+function sfxHint()    { playTone(660,'sine',0.1,0.07); }
+
+// ── Materials Database ─────────────────────────────────────────
+const MATERIALS = {
+  // ══ METALS ══════════════════════════════════════════════
+  steel:        { category:'Metal',    hardness:8, flexibility:3, density:9, waterResistance:5, conductivity:8, insulation:2, transparency:1, durability:9, cost:4, texture:'Smooth',   flavor:'The backbone of civilization. Iron-carbon alloy prized for structural strength and magnetism.' },
+  iron:         { category:'Metal',    hardness:7, flexibility:3, density:9, waterResistance:3, conductivity:7, insulation:2, transparency:1, durability:7, cost:3, texture:'Rough',    flavor:'Ancient metal of industry. Strong but prone to rust without protection — humanity\'s first true metal.' },
+  aluminum:     { category:'Metal',    hardness:4, flexibility:4, density:4, waterResistance:7, conductivity:9, insulation:2, transparency:1, durability:6, cost:4, texture:'Smooth',   flavor:'Lightweight champion. Silvery metal that forms a protective oxide layer — aircraft, cans, and foil.' },
+  copper:       { category:'Metal',    hardness:4, flexibility:5, density:8, waterResistance:6, conductivity:10,insulation:1, transparency:1, durability:7, cost:6, texture:'Smooth',   flavor:'The original conductor. Warm reddish metal essential for electrical wiring and plumbing.' },
+  gold:         { category:'Metal',    hardness:3, flexibility:6, density:10,waterResistance:9, conductivity:9, insulation:1, transparency:1, durability:8, cost:10,texture:'Smooth',   flavor:'The eternal metal. Non-tarnishing, malleable, and universally coveted since the dawn of civilization.' },
+  silver:       { category:'Metal',    hardness:3, flexibility:5, density:8, waterResistance:8, conductivity:10,insulation:1, transparency:1, durability:6, cost:8, texture:'Smooth',   flavor:'Best conductor of all metals. Naturally antimicrobial and valued for both utility and beauty.' },
+  titanium:     { category:'Metal',    hardness:7, flexibility:4, density:5, waterResistance:9, conductivity:4, insulation:2, transparency:1, durability:10,cost:9, texture:'Smooth',   flavor:'Space-age metal. Exceptional strength-to-weight ratio used in aerospace and medical implants.' },
+  lead:         { category:'Metal',    hardness:2, flexibility:7, density:10,waterResistance:8, conductivity:5, insulation:3, transparency:1, durability:6, cost:3, texture:'Rough',    flavor:'Dense and soft. Once used in paint and pipes, now prized for radiation shielding and batteries.' },
+  bronze:       { category:'Metal',    hardness:5, flexibility:3, density:8, waterResistance:6, conductivity:7, insulation:2, transparency:1, durability:8, cost:5, texture:'Smooth',   flavor:'Copper-tin alloy that launched the Bronze Age. Resistant to corrosion and beautiful with age.' },
+  nickel:       { category:'Metal',    hardness:5, flexibility:4, density:8, waterResistance:7, conductivity:7, insulation:2, transparency:1, durability:8, cost:5, texture:'Smooth',   flavor:'Hard, corrosion-resistant metal used in stainless steel alloys and rechargeable batteries.' },
+  platinum:     { category:'Metal',    hardness:4, flexibility:5, density:10,waterResistance:10,conductivity:7, insulation:1, transparency:1, durability:9, cost:10,texture:'Smooth',   flavor:'The noble metal. Dense, precious, and virtually indestructible. The platinum standard.' },
+  zinc:         { category:'Metal',    hardness:4, flexibility:3, density:7, waterResistance:7, conductivity:6, insulation:2, transparency:1, durability:6, cost:3, texture:'Smooth',   flavor:'Protective metal used to galvanize steel against rust. Essential trace mineral for life.' },
+  tungsten:     { category:'Metal',    hardness:9, flexibility:1, density:10,waterResistance:8, conductivity:6, insulation:1, transparency:1, durability:9, cost:7, texture:'Smooth',   flavor:'Densest practical metal and highest melting point of all elements — the filament inside every bulb.' },
+  tin:          { category:'Metal',    hardness:2, flexibility:6, density:7, waterResistance:7, conductivity:6, insulation:2, transparency:1, durability:5, cost:4, texture:'Smooth',   flavor:'Soft white metal that coats steel cans. Makes a distinctive crying sound when bent.' },
+  brass:        { category:'Metal',    hardness:4, flexibility:4, density:8, waterResistance:6, conductivity:8, insulation:2, transparency:1, durability:7, cost:5, texture:'Smooth',   flavor:'Copper-zinc alloy with a golden warmth. Musical instruments, plumbing, and decorative hardware.' },
+  cobalt:       { category:'Metal',    hardness:6, flexibility:3, density:8, waterResistance:7, conductivity:5, insulation:2, transparency:1, durability:8, cost:7, texture:'Smooth',   flavor:'Hard magnetic metal essential for rechargeable batteries and jet engine superalloys.' },
+
+  // ══ MINERALS / STONES ═══════════════════════════════════
+  granite:      { category:'Mineral',  hardness:9, flexibility:1, density:8, waterResistance:7, conductivity:2, insulation:5, transparency:1, durability:9, cost:5, texture:'Grainy',   flavor:'Ancient igneous rock. Crystalline surface of quartz and feldspar built for countertops and monuments.' },
+  marble:       { category:'Mineral',  hardness:7, flexibility:1, density:8, waterResistance:5, conductivity:2, insulation:5, transparency:1, durability:7, cost:7, texture:'Smooth',   flavor:'Metamorphic luxury. Formed from limestone under heat and pressure — veined, cool to touch, timeless.' },
+  obsidian:     { category:'Mineral',  hardness:7, flexibility:1, density:7, waterResistance:8, conductivity:1, insulation:4, transparency:3, durability:5, cost:4, texture:'Smooth',   flavor:'Volcanic glass. Razor-sharp edges made it the first surgical blade. Black and intensely glassy.' },
+  quartz:       { category:'Mineral',  hardness:8, flexibility:1, density:7, waterResistance:8, conductivity:2, insulation:5, transparency:7, durability:8, cost:4, texture:'Smooth',   flavor:'Piezoelectric crystal found everywhere. From countertops to precision oscillators in your watch.' },
+  limestone:    { category:'Mineral',  hardness:4, flexibility:1, density:7, waterResistance:3, conductivity:1, insulation:5, transparency:1, durability:5, cost:3, texture:'Grainy',   flavor:'Sedimentary rock of ancient seabeds. Foundation of concrete, chalk, and historic architecture.' },
+  sandstone:    { category:'Mineral',  hardness:4, flexibility:1, density:6, waterResistance:3, conductivity:1, insulation:5, transparency:1, durability:5, cost:2, texture:'Grainy',   flavor:'Compacted sand grains. Warm ochre tones make it a favorite for desert architecture.' },
+  slate:        { category:'Mineral',  hardness:6, flexibility:2, density:7, waterResistance:7, conductivity:2, insulation:4, transparency:1, durability:7, cost:4, texture:'Rough',    flavor:'Foliated metamorphic rock. Splits into thin sheets — roofing tiles and blackboards.' },
+  diamond:      { category:'Mineral',  hardness:10,flexibility:1, density:6, waterResistance:10,conductivity:1, insulation:3, transparency:9, durability:10,cost:10,texture:'Smooth',   flavor:'Hardest natural substance. Pure carbon in a crystal lattice, formed deep in Earth\'s mantle.' },
+  clay:         { category:'Mineral',  hardness:2, flexibility:6, density:5, waterResistance:2, conductivity:1, insulation:6, transparency:1, durability:3, cost:1, texture:'Soft',     flavor:'Earth\'s original craft material. Plastic when wet, hard when fired — foundation of all ceramics.' },
+  coal:         { category:'Mineral',  hardness:3, flexibility:1, density:5, waterResistance:4, conductivity:3, insulation:4, transparency:1, durability:4, cost:2, texture:'Rough',    flavor:'Compressed prehistoric forests. Combustible carbon fuel that powered the industrial revolution.' },
+  salt:         { category:'Mineral',  hardness:2, flexibility:1, density:5, waterResistance:1, conductivity:2, insulation:3, transparency:4, durability:2, cost:1, texture:'Grainy',   flavor:'Crystalline mineral essential to life. Preserved civilizations and seasoned every meal in history.' },
+  ice:          { category:'Mineral',  hardness:2, flexibility:1, density:5, waterResistance:5, conductivity:3, insulation:4, transparency:8, durability:1, cost:1, texture:'Smooth',   flavor:'Crystalline water at 0°C. Beautiful, temporary, and vital — locked up in glaciers holding our future.' },
+  sand:         { category:'Mineral',  hardness:6, flexibility:1, density:4, waterResistance:4, conductivity:1, insulation:4, transparency:2, durability:4, cost:1, texture:'Grainy',   flavor:'Weathered mineral particles. Raw material for glass, silicon chips, and every beach on Earth.' },
+  pumice:       { category:'Mineral',  hardness:5, flexibility:1, density:1, waterResistance:5, conductivity:1, insulation:7, transparency:1, durability:4, cost:2, texture:'Grainy',   flavor:'Volcanic glass foam so light it floats on water. Natural exfoliant and lightweight aggregate.' },
+  mud:          { category:'Mineral',  hardness:1, flexibility:6, density:5, waterResistance:1, conductivity:1, insulation:6, transparency:1, durability:2, cost:1, texture:'Soft',     flavor:'Clay-water mixture — humanity\'s first building material. Adobe homes last centuries in dry climates.' },
+  flint:        { category:'Mineral',  hardness:8, flexibility:1, density:7, waterResistance:8, conductivity:1, insulation:4, transparency:1, durability:7, cost:2, texture:'Smooth',   flavor:'Microcrystalline quartz that sparks under steel. The original fire-starter and prehistoric cutting tool.' },
+  mica:         { category:'Mineral',  hardness:3, flexibility:6, density:5, waterResistance:7, conductivity:1, insulation:9, transparency:6, durability:4, cost:3, texture:'Smooth',   flavor:'Silicate mineral that splits into transparent flexible sheets. Electrical insulator and glitter source.' },
+  gypsum:       { category:'Mineral',  hardness:2, flexibility:1, density:5, waterResistance:2, conductivity:1, insulation:6, transparency:3, durability:3, cost:2, texture:'Smooth',   flavor:'Soft sulfate mineral. Plasterboard, chalk, and alabaster sculptures — humble and everywhere.' },
+
+  // ══ PLANT-BASED ══════════════════════════════════════════
+  wood:         { category:'Plant',    hardness:5, flexibility:3, density:4, waterResistance:4, conductivity:1, insulation:8, transparency:1, durability:6, cost:3, texture:'Rough',    flavor:'Nature\'s original building material. Cellular cellulose-lignin structure, each species unique.' },
+  bamboo:       { category:'Plant',    hardness:5, flexibility:7, density:3, waterResistance:5, conductivity:1, insulation:7, transparency:1, durability:7, cost:2, texture:'Smooth',   flavor:'Fastest-growing plant on Earth. Stronger than steel by weight — nature\'s sustainable superstructure.' },
+  cork:         { category:'Plant',    hardness:2, flexibility:8, density:1, waterResistance:8, conductivity:1, insulation:10,transparency:1, durability:5, cost:4, texture:'Soft',     flavor:'Harvested bark of the cork oak. Millions of tiny air cells make it nature\'s perfect insulator.' },
+  cotton:       { category:'Plant',    hardness:1, flexibility:9, density:2, waterResistance:2, conductivity:1, insulation:7, transparency:1, durability:5, cost:3, texture:'Soft',     flavor:'Soft boll fiber that clothed civilization. Breathable, absorbent, and endlessly versatile.' },
+  linen:        { category:'Plant',    hardness:2, flexibility:7, density:2, waterResistance:3, conductivity:1, insulation:6, transparency:2, durability:6, cost:5, texture:'Rough',    flavor:'Woven flax fiber — crisp, cool, and ancient. Gets softer with every wash over decades.' },
+  paper:        { category:'Plant',    hardness:1, flexibility:7, density:2, waterResistance:1, conductivity:1, insulation:5, transparency:2, durability:2, cost:1, texture:'Smooth',   flavor:'Sheets of pressed wood pulp that changed the world. Lightweight carrier of human knowledge.' },
+  hemp:         { category:'Plant',    hardness:3, flexibility:8, density:2, waterResistance:4, conductivity:1, insulation:6, transparency:1, durability:7, cost:3, texture:'Rough',    flavor:'Ancient fiber plant with remarkable tensile strength. One of humanity\'s oldest cultivated crops.' },
+  rattan:       { category:'Plant',    hardness:4, flexibility:8, density:3, waterResistance:4, conductivity:1, insulation:6, transparency:1, durability:6, cost:3, texture:'Rough',    flavor:'Climbing palm vine woven into furniture. Lightweight, strong, and flexible — tropical craftsmanship.' },
+  charcoal:     { category:'Plant',    hardness:2, flexibility:1, density:2, waterResistance:4, conductivity:3, insulation:5, transparency:1, durability:3, cost:1, texture:'Rough',    flavor:'Carbonized wood with a microporous structure. Adsorbs toxins and fuels ancient forges.' },
+  balsa:        { category:'Plant',    hardness:1, flexibility:4, density:1, waterResistance:2, conductivity:1, insulation:9, transparency:1, durability:3, cost:3, texture:'Smooth',   flavor:'Lightest commercial wood. So buoyant it practically floats on air — model builders\' favorite.' },
+  denim:        { category:'Plant',    hardness:4, flexibility:6, density:4, waterResistance:3, conductivity:1, insulation:5, transparency:1, durability:8, cost:4, texture:'Rough',    flavor:'Twill-woven cotton dyed with indigo. Workwear born in Nîmes, France — now the global uniform.' },
+  velvet:       { category:'Plant',    hardness:2, flexibility:8, density:3, waterResistance:2, conductivity:1, insulation:6, transparency:1, durability:5, cost:7, texture:'Soft',     flavor:'Cut-pile woven fabric with distinctive sheen. Associated with royalty and luxury since medieval times.' },
+  burlap:       { category:'Plant',    hardness:3, flexibility:6, density:3, waterResistance:2, conductivity:1, insulation:4, transparency:3, durability:5, cost:1, texture:'Rough',    flavor:'Coarsely woven jute fiber. Humble and utilitarian — grain sacks and coffee bags worldwide.' },
+  satin:        { category:'Plant',    hardness:2, flexibility:9, density:2, waterResistance:3, conductivity:1, insulation:4, transparency:2, durability:4, cost:6, texture:'Smooth',   flavor:'Woven fabric with a lustrous face and dull back. Slides effortlessly and catches the light.' },
+  ash:          { category:'Plant',    hardness:1, flexibility:1, density:1, waterResistance:1, conductivity:2, insulation:5, transparency:1, durability:1, cost:1, texture:'Soft',     flavor:'Mineral residue of combustion. Fertilizer, pigment, and ancient soap — what remains after fire.' },
+  straw:        { category:'Plant',    hardness:1, flexibility:7, density:1, waterResistance:2, conductivity:1, insulation:8, transparency:1, durability:3, cost:1, texture:'Rough',    flavor:'Dried cereal stems. Ancient thatching and insulation material still used in eco-construction.' },
+  cane:         { category:'Plant',    hardness:4, flexibility:7, density:2, waterResistance:4, conductivity:1, insulation:6, transparency:1, durability:5, cost:2, texture:'Rough',    flavor:'Hollow grass stems used for furniture, fishing rods, and wicker weaving for millennia.' },
+  flax:         { category:'Plant',    hardness:2, flexibility:8, density:2, waterResistance:3, conductivity:1, insulation:6, transparency:1, durability:5, cost:3, texture:'Rough',    flavor:'Bast fiber plant used to make linen. One of the oldest textile fibers known to humankind.' },
+  kapok:        { category:'Plant',    hardness:1, flexibility:8, density:1, waterResistance:6, conductivity:1, insulation:9, transparency:1, durability:3, cost:3, texture:'Soft',     flavor:'Silky seed fiber from the kapok tree. Eight times lighter than cotton and naturally water-resistant.' },
+  raffia:       { category:'Plant',    hardness:2, flexibility:9, density:2, waterResistance:3, conductivity:1, insulation:5, transparency:1, durability:4, cost:2, texture:'Rough',    flavor:'Strips from the raffia palm used for weaving baskets, mats, and hats. Flexible and biodegradable.' },
+
+  // ══ ANIMAL-DERIVED ═══════════════════════════════════════
+  leather:      { category:'Animal',   hardness:4, flexibility:7, density:5, waterResistance:7, conductivity:1, insulation:6, transparency:1, durability:8, cost:7, texture:'Smooth',   flavor:'Tanned animal hide. Ages beautifully with use — every scratch adds character and story.' },
+  wool:         { category:'Animal',   hardness:1, flexibility:9, density:2, waterResistance:5, conductivity:1, insulation:9, transparency:1, durability:6, cost:5, texture:'Soft',     flavor:'Crimped fiber from sheep. Nature\'s most sophisticated insulator — warm even when wet.' },
+  silk:         { category:'Animal',   hardness:2, flexibility:9, density:2, waterResistance:3, conductivity:1, insulation:5, transparency:3, durability:5, cost:9, texture:'Soft',     flavor:'Spun by silkworms in continuous filaments up to 1 km long. The original luxury fabric.' },
+  bone:         { category:'Animal',   hardness:7, flexibility:2, density:7, waterResistance:5, conductivity:2, insulation:4, transparency:1, durability:7, cost:2, texture:'Smooth',   flavor:'Living composite of collagen and calcium phosphate. Harder than concrete per unit weight.' },
+  ivory:        { category:'Animal',   hardness:6, flexibility:2, density:6, waterResistance:6, conductivity:1, insulation:5, transparency:1, durability:8, cost:9, texture:'Smooth',   flavor:'Dense dentine from elephant tusks. Coveted for its workability and warm cream luster.' },
+  shell:        { category:'Animal',   hardness:6, flexibility:1, density:5, waterResistance:8, conductivity:1, insulation:4, transparency:2, durability:6, cost:3, texture:'Smooth',   flavor:'Layered calcium carbonate secreted by mollusks. Iridescent nacre layer forms mother-of-pearl.' },
+  cashmere:     { category:'Animal',   hardness:1, flexibility:9, density:1, waterResistance:3, conductivity:1, insulation:9, transparency:1, durability:4, cost:9, texture:'Soft',     flavor:'Undercoat of Cashmere goats. The softest natural fiber — so fine each strand is nearly invisible.' },
+  horn:         { category:'Animal',   hardness:5, flexibility:4, density:5, waterResistance:6, conductivity:1, insulation:5, transparency:1, durability:7, cost:4, texture:'Smooth',   flavor:'Keratin-based material from animal horns. Moldable when heated, tough when cool.' },
+  wax:          { category:'Animal',   hardness:1, flexibility:5, density:2, waterResistance:9, conductivity:1, insulation:7, transparency:4, durability:3, cost:3, texture:'Smooth',   flavor:'Secreted by bees as honeycomb walls. Waterproof, workable, and glowing golden.' },
+  down:         { category:'Animal',   hardness:1, flexibility:9, density:1, waterResistance:2, conductivity:1, insulation:10,transparency:1, durability:4, cost:7, texture:'Soft',     flavor:'Soft under-feathers of waterfowl. Highest warmth-to-weight ratio of any natural insulator.' },
+  felt:         { category:'Animal',   hardness:2, flexibility:7, density:3, waterResistance:3, conductivity:1, insulation:7, transparency:1, durability:4, cost:2, texture:'Soft',     flavor:'Matted wool fibers compressed into sheets. No weaving needed — ancient and endlessly useful.' },
+  tweed:        { category:'Animal',   hardness:3, flexibility:5, density:4, waterResistance:5, conductivity:1, insulation:8, transparency:1, durability:8, cost:7, texture:'Rough',    flavor:'Rough-surfaced woolen cloth from Scottish and Irish mills. Timeless, durable, slightly prickly.' },
+  suede:        { category:'Animal',   hardness:3, flexibility:8, density:4, waterResistance:3, conductivity:1, insulation:6, transparency:1, durability:5, cost:6, texture:'Soft',     flavor:'Inner split of leather with a napped finish. Softer than full-grain leather but less water-resistant.' },
+  fur:          { category:'Animal',   hardness:1, flexibility:9, density:2, waterResistance:6, conductivity:1, insulation:9, transparency:1, durability:5, cost:8, texture:'Soft',     flavor:'Dense animal coat with air-trapping under-fur. Nature\'s luxury coat, worn by many species.' },
+  chitin:       { category:'Animal',   hardness:5, flexibility:5, density:4, waterResistance:7, conductivity:1, insulation:5, transparency:2, durability:6, cost:5, texture:'Smooth',   flavor:'Hard polysaccharide forming insect exoskeletons and crustacean shells. Lightweight natural armor.' },
+
+  // ══ SYNTHETIC ════════════════════════════════════════════
+  plastic:      { category:'Synthetic',hardness:3, flexibility:5, density:3, waterResistance:9, conductivity:1, insulation:8, transparency:6, durability:6, cost:2, texture:'Smooth',  flavor:'Polymer revolution. Infinitely moldable, persistently immortal — transforming and troubling the world.' },
+  rubber:       { category:'Synthetic',hardness:2, flexibility:10,density:3, waterResistance:10,conductivity:1, insulation:8, transparency:1, durability:7, cost:3, texture:'Flexible', flavor:'Vulcanized elastic polymer. Bounces, seals, and grips — the unsung hero of modern machinery.' },
+  nylon:        { category:'Synthetic',hardness:4, flexibility:8, density:3, waterResistance:7, conductivity:1, insulation:6, transparency:2, durability:8, cost:3, texture:'Smooth',  flavor:'First fully synthetic fiber. Stronger than steel by weight, slippery as silk.' },
+  glass:        { category:'Synthetic',hardness:7, flexibility:1, density:7, waterResistance:9, conductivity:1, insulation:4, transparency:10,durability:4, cost:3, texture:'Smooth',  flavor:'Supercooled silica liquid. Neither solid nor liquid — brittle, transparent, ancient and modern.' },
+  concrete:     { category:'Synthetic',hardness:7, flexibility:1, density:8, waterResistance:4, conductivity:2, insulation:4, transparency:1, durability:8, cost:2, texture:'Rough',   flavor:'Roman invention still shaping cities. Liquid stone that flows, sets, and lasts millennia.' },
+  ceramic:      { category:'Synthetic',hardness:8, flexibility:1, density:6, waterResistance:8, conductivity:1, insulation:7, transparency:1, durability:7, cost:4, texture:'Smooth',  flavor:'Fired clay compounds with extraordinary heat resistance. From pottery to space shuttle tiles.' },
+  fiberglass:   { category:'Synthetic',hardness:5, flexibility:4, density:3, waterResistance:9, conductivity:1, insulation:6, transparency:2, durability:8, cost:5, texture:'Smooth',  flavor:'Glass fibers bonded in resin matrix. Lightweight boat hulls and car bodies impossible otherwise.' },
+  foam:         { category:'Synthetic',hardness:1, flexibility:8, density:1, waterResistance:5, conductivity:1, insulation:9, transparency:1, durability:4, cost:2, texture:'Soft',    flavor:'Gas-filled polymer matrix. Packaging, pillows, and crash helmets all rely on its energy absorption.' },
+  polyester:    { category:'Synthetic',hardness:3, flexibility:8, density:3, waterResistance:7, conductivity:1, insulation:5, transparency:2, durability:7, cost:2, texture:'Smooth',  flavor:'Petroleum-derived synthetic fiber. Wrinkle-resistant, quick-drying workhorse of modern clothing.' },
+  epoxy:        { category:'Synthetic',hardness:7, flexibility:2, density:4, waterResistance:9, conductivity:1, insulation:7, transparency:5, durability:9, cost:5, texture:'Smooth',  flavor:'Two-part polymer adhesive. Bonds nearly everything and cures into a structural material of its own.' },
+  silicone:     { category:'Synthetic',hardness:1, flexibility:10,density:3, waterResistance:10,conductivity:1, insulation:8, transparency:4, durability:9, cost:6, texture:'Smooth',  flavor:'Synthetic elastomer of silicon and oxygen. Stable from -60°C to 230°C and utterly waterproof.' },
+  kevlar:       { category:'Synthetic',hardness:8, flexibility:6, density:3, waterResistance:6, conductivity:1, insulation:5, transparency:1, durability:10,cost:9, texture:'Rough',   flavor:'Aramid polymer with extraordinary tensile strength. Five times stronger than steel by weight.' },
+  carbon_fiber: { category:'Synthetic',hardness:8, flexibility:3, density:3, waterResistance:8, conductivity:6, insulation:3, transparency:1, durability:10,cost:9, texture:'Smooth',  flavor:'Graphene-based composite. Lightest structural material with extraordinary stiffness — aerospace gold.' },
+  acrylic:      { category:'Synthetic',hardness:5, flexibility:2, density:4, waterResistance:9, conductivity:1, insulation:7, transparency:9, durability:5, cost:4, texture:'Smooth',  flavor:'Lightweight glass alternative. Half the weight, UV-resistant, and shatter-resistant.' },
+  teflon:       { category:'Synthetic',hardness:3, flexibility:4, density:4, waterResistance:10,conductivity:1, insulation:8, transparency:2, durability:8, cost:7, texture:'Smooth',  flavor:'Polytetrafluoroethylene — nothing sticks to it. The most slippery solid material known.' },
+  polystyrene:  { category:'Synthetic',hardness:2, flexibility:2, density:1, waterResistance:7, conductivity:1, insulation:9, transparency:3, durability:3, cost:1, texture:'Smooth',  flavor:'Expanded styrene foam. Disposable cups, packaging peanuts, styrofoam — annoyingly durable in landfills.' },
+  vinyl:        { category:'Synthetic',hardness:3, flexibility:6, density:4, waterResistance:9, conductivity:1, insulation:7, transparency:3, durability:6, cost:2, texture:'Smooth',  flavor:'PVC polymer. From records to pipes to flooring — incredibly versatile and water-tight.' },
+  latex:        { category:'Synthetic',hardness:1, flexibility:10,density:2, waterResistance:9, conductivity:1, insulation:7, transparency:2, durability:5, cost:3, texture:'Flexible', flavor:'Natural or synthetic rubber emulsion. Gloves, balloons, and mattresses — stretchy and impermeable.' },
+  spandex:      { category:'Synthetic',hardness:1, flexibility:10,density:2, waterResistance:6, conductivity:1, insulation:4, transparency:1, durability:6, cost:4, texture:'Smooth',  flavor:'Synthetic elastane fiber. Stretches to eight times its length and springs back perfectly.' },
+  gore_tex:     { category:'Synthetic',hardness:3, flexibility:6, density:2, waterResistance:10,conductivity:1, insulation:5, transparency:1, durability:7, cost:9, texture:'Smooth',  flavor:'ePTFE membrane that blocks water droplets but lets vapor through. The wet-weather miracle.' },
+  resin:        { category:'Synthetic',hardness:5, flexibility:2, density:4, waterResistance:9, conductivity:1, insulation:7, transparency:7, durability:7, cost:4, texture:'Smooth',  flavor:'Cured polymer used for casting, coating, and craft. Crystal-clear when cured, preserving anything inside.' },
+  polypropylene:{ category:'Synthetic',hardness:3, flexibility:6, density:2, waterResistance:9, conductivity:1, insulation:7, transparency:3, durability:6, cost:2, texture:'Smooth',  flavor:'Versatile thermoplastic. Food containers, ropes, and living hinges — the hinge that never breaks.' },
+  aerogel:      { category:'Synthetic',hardness:1, flexibility:1, density:1, waterResistance:5, conductivity:1, insulation:10,transparency:6, durability:2, cost:10,texture:'Smooth',  flavor:'97% air by volume. Lightest solid material ever made and the best thermal insulator known.' },
+  graphite:     { category:'Synthetic',hardness:2, flexibility:4, density:4, waterResistance:5, conductivity:9, insulation:2, transparency:1, durability:5, cost:4, texture:'Smooth',  flavor:'Layered carbon sheets that slide apart easily. Pencil lead and lubricant — carbon\'s slippery form.' },
+  neoprene:     { category:'Synthetic',hardness:2, flexibility:9, density:3, waterResistance:10,conductivity:1, insulation:8, transparency:1, durability:7, cost:5, texture:'Smooth',  flavor:'Synthetic rubber resistant to oil, ozone, and temperature. Wetsuits, laptop sleeves, cable jacketing.' },
+};
+
+// ── Property Definitions ──────────────────────────────────────
+const PROPERTIES = ['hardness','flexibility','density','waterResistance','conductivity','insulation','transparency','durability','cost'];
+const PROP_LABELS = { hardness:'Hard', flexibility:'Flex', density:'Dense', waterResistance:'WaterR', conductivity:'Cond.', insulation:'Insul.', transparency:'Trans.', durability:'Dura.', cost:'Cost' };
+const CAT_COLORS  = { Metal:'#c0a060', Mineral:'#7eaacc', Plant:'#5ecc7e', Animal:'#cc7e7e', Synthetic:'#a07ecc' };
+
+// ── Game State ────────────────────────────────────────────────
+let target     = null;
+let guesses    = [];
+let gameOver   = false;
+let hintsUsed  = [];        // property names already hinted
+let confirmedProps = {};    // { propName: value } — props confirmed correct by guesses or hints
+let radarChart = null;
+let acIndex    = -1;
+let acItems    = [];
+
+// ── Statistics ────────────────────────────────────────────────
+function loadStats() { try { return JSON.parse(localStorage.getItem('materia_stats')||'{}'); } catch(e){ return {}; } }
+function saveStats(s) { try { localStorage.setItem('materia_stats', JSON.stringify(s)); } catch(e){} }
+function defaultStats() { return { played:0, wins:0, streak:0, maxStreak:0, dist:{1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:0,10:0} }; }
+function getStats() { return Object.assign(defaultStats(), loadStats()); }
+
+// ── Utilities ─────────────────────────────────────────────────
+function matNames() { return Object.keys(MATERIALS); }
+function randItem(arr) { return arr[Math.floor(Math.random()*arr.length)]; }
+function toast(msg, type='', dur=2200) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = 'show ' + type;
+  setTimeout(()=>{ el.className=''; }, dur);
+}
+
+// ── Init ──────────────────────────────────────────────────────
+function initGame() {
+  target = randItem(matNames());
+  guesses = []; gameOver = false; hintsUsed = []; confirmedProps = {};
+  document.getElementById('guesses').innerHTML = '';
+  document.getElementById('guess-count').textContent = '0';
+  document.getElementById('win-screen').classList.remove('show');
+  document.getElementById('input-area').style.display = '';
+  document.getElementById('action-row').style.display = '';
+  document.getElementById('flavor-area').style.display = 'none';
+  document.getElementById('cat-chip').style.display = 'none';
+  document.getElementById('radar-card').style.display = 'none';
+  document.getElementById('hint-badges').innerHTML = '';
+  document.getElementById('guess-input').value = '';
+  document.getElementById('guess-input').disabled = false;
+  document.getElementById('guess-btn').disabled = false;
+  document.getElementById('hint-btn').disabled = false;
+  document.getElementById('reveal-btn').disabled = false;
+  if (radarChart) { radarChart.destroy(); radarChart = null; }
+}
+
+// ── Submit Guess ──────────────────────────────────────────────
+function submitGuess(name) {
+  name = name.toLowerCase().replace(/ /g,'_').trim();
+  // Also try with spaces
+  const nameSpaced = name.replace(/_/g,' ');
+  const key = MATERIALS[name] ? name : (MATERIALS[nameSpaced] ? nameSpaced : null);
+  if (!key) { toast('Unknown material!', 'error'); sfxWrong(); return; }
+  if (guesses.includes(key)) { toast('Already guessed!', 'error'); sfxWrong(); return; }
+
+  guesses.push(key);
+  document.getElementById('guess-count').textContent = guesses.length;
+  document.getElementById('guess-input').value = '';
+  closeAC();
+
+  const tMat = MATERIALS[target];
+  const gMat = MATERIALS[key];
+  const isWin = key === target;
+
+  // Show category after first guess
+  if (guesses.length === 1) {
+    document.getElementById('cat-hint').textContent = tMat.category;
+    document.getElementById('cat-chip').style.display = 'flex';
+  }
+
+  // Update confirmed props
+  PROPERTIES.forEach(p => {
+    if (gMat[p] === tMat[p]) confirmedProps[p] = tMat[p];
+  });
+  if (gMat.category === tMat.category) confirmedProps['category'] = tMat.category;
+
+  renderGuessRow(key, gMat, tMat);
+  updateRadar(key, gMat, tMat);
+  showFlavor(key, gMat);
+
+  if (isWin) { sfxCorrect(); setTimeout(()=>showWin(false), 600); }
+  else sfxGuess();
+}
+
+// ── Render Row ────────────────────────────────────────────────
+function renderGuessRow(name, gMat, tMat) {
+  const row = document.createElement('div');
+  row.className = 'guess-row';
+  const nameCell = document.createElement('div');
+  nameCell.className = 'guess-name';
+  nameCell.textContent = name.replace(/_/g,' ');
+  row.appendChild(nameCell);
+  row.appendChild(buildCatCell(gMat, tMat));
+  PROPERTIES.forEach((prop, i) => row.appendChild(buildNumCell(prop, gMat[prop], tMat[prop], i)));
+  document.getElementById('guesses').appendChild(row);
+}
+
+function buildCatCell(gMat, tMat) {
+  const cell = document.createElement('div');
+  cell.className = 'guess-cell ' + (gMat.category === tMat.category ? 'cell-green' : 'cell-gray');
+  const abbr = gMat.category.substring(0,3).toUpperCase();
+  cell.innerHTML = `<span class="cell-val">${abbr}</span>`;
+  return cell;
+}
+
+function buildNumCell(prop, gVal, tVal, i) {
+  const cell = document.createElement('div');
+  cell.className = 'guess-cell';
+  const diff = gVal - tVal;
+  let cls, arrow = '';
+  if (diff === 0)           { cls = 'cell-green'; }
+  else if (Math.abs(diff)===1){ cls = 'cell-yellow'; arrow = diff > 0 ? '↓' : '↑'; }
+  else if (diff > 0)        { cls = 'cell-red';   arrow = '↓'; }
+  else                      { cls = 'cell-blue';  arrow = '↑'; }
+  cell.classList.add(cls);
+  cell.style.opacity = '0';
+  cell.innerHTML = `<span class="cell-arrow">${arrow}</span><span class="cell-val">${gVal}</span>`;
+  setTimeout(()=>{ cell.style.transition='opacity 0.25s'; cell.style.opacity='1'; }, i * 38 + 40);
+  return cell;
+}
+
+// ── Radar ─────────────────────────────────────────────────────
+// Shows last guess in accent color, confirmed correct values as green overlay
+function updateRadar(name, gMat, tMat) {
+  const card = document.getElementById('radar-card');
+  card.style.display = 'block';
+  document.getElementById('radar-label').textContent = name.replace(/_/g,' ').toUpperCase();
+
+  const labels     = PROPERTIES.map(p => PROP_LABELS[p]);
+  const guessData  = PROPERTIES.map(p => gMat[p]);
+  // Build confirmed overlay: use confirmed value if known, else null → but Chart.js needs numbers, use 0 for unknowns
+  const knownData  = PROPERTIES.map(p => confirmedProps[p] !== undefined ? confirmedProps[p] : null);
+  const catColor   = CAT_COLORS[gMat.category] || '#7c6aff';
+
+  if (radarChart) {
+    radarChart.data.datasets[0].data = guessData;
+    radarChart.data.datasets[0].borderColor = catColor;
+    radarChart.data.datasets[0].backgroundColor = catColor + '22';
+    radarChart.data.datasets[0].label = name.replace(/_/g,' ');
+    radarChart.data.datasets[1].data = knownData.map(v => v ?? 0);
+    radarChart.data.datasets[1].pointBackgroundColor = knownData.map(v => v !== null ? '#3ecf8e' : 'transparent');
+    radarChart.data.datasets[1].pointBorderColor     = knownData.map(v => v !== null ? '#3ecf8e' : 'transparent');
+    radarChart.data.datasets[1].pointRadius          = knownData.map(v => v !== null ? 5 : 0);
+    radarChart.update('active');
+    return;
+  }
+
+  const ctx = document.getElementById('radarChart').getContext('2d');
+  radarChart = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: name.replace(/_/g,' '),
+          data: guessData,
+          borderColor: catColor,
+          backgroundColor: catColor + '22',
+          borderWidth: 2,
+          pointBackgroundColor: catColor,
+          pointRadius: 3,
+          pointHoverRadius: 5,
+        },
+        {
+          // confirmed correct props overlay
+          label: 'Confirmed',
+          data: knownData.map(v => v ?? 0),
+          borderColor: 'transparent',
+          backgroundColor: 'transparent',
+          borderWidth: 0,
+          pointBackgroundColor: knownData.map(v => v !== null ? '#3ecf8e' : 'transparent'),
+          pointBorderColor:     knownData.map(v => v !== null ? '#3ecf8e' : 'transparent'),
+          pointRadius:          knownData.map(v => v !== null ? 5 : 0),
+          pointHoverRadius:     6,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      animation: { duration: 500 },
+      scales: {
+        r: {
+          min: 0, max: 10,
+          ticks: { stepSize: 2, color: '#4e5368', font: { size: 8, family: 'DM Mono' }, backdropColor: 'transparent' },
+          grid: { color: '#252836' },
+          angleLines: { color: '#252836' },
+          pointLabels: { color: '#8c93a8', font: { size: 8.5, family: 'DM Mono' } }
+        }
+      },
+      plugins: { legend: { display: false } }
+    }
+  });
+}
+
+// ── Flavor ────────────────────────────────────────────────────
+function showFlavor(name, mat) {
+  document.getElementById('flavor-name').textContent = name.replace(/_/g,' ').toUpperCase();
+  document.getElementById('flavor-text').textContent = mat.flavor;
+  document.getElementById('flavor-area').style.display = 'block';
+}
+
+// ── Hint System ───────────────────────────────────────────────
+function useHint() {
+  if (gameOver) return;
+  const tMat = MATERIALS[target];
+  // Find properties not yet confirmed correct and not yet hinted
+  const allRevealable = ['category', ...PROPERTIES];
+  const unconfirmed = allRevealable.filter(p => confirmedProps[p] === undefined && !hintsUsed.includes(p));
+  if (!unconfirmed.length) { toast('All properties already revealed!', ''); return; }
+  const pick = randItem(unconfirmed);
+  hintsUsed.push(pick);
+  const val = pick === 'category' ? tMat.category : tMat[pick];
+  confirmedProps[pick] = val;
+  sfxHint();
+
+  // Show badge
+  const badge = document.createElement('div');
+  badge.className = 'hint-badge';
+  const label = pick === 'category' ? 'Category' : PROP_LABELS[pick] || pick;
+  badge.innerHTML = `💡 ${label}: <b>${val}</b>`;
+  document.getElementById('hint-badges').appendChild(badge);
+  toast(`Hint: ${label} = ${val}`, 'hint', 3000);
+
+  // Update radar if it's visible
+  if (radarChart && guesses.length > 0) {
+    const lastGuess = guesses[guesses.length - 1];
+    updateRadar(lastGuess, MATERIALS[lastGuess], tMat);
+  }
+}
+
+// ── Reveal Answer ─────────────────────────────────────────────
+function revealAnswer() {
+  if (gameOver) return;
+  const tMat = MATERIALS[target];
+  showFlavor(target, tMat);
+
+  // Mark all props as confirmed for radar
+  PROPERTIES.forEach(p => confirmedProps[p] = tMat[p]);
+  confirmedProps['category'] = tMat.category;
+  if (radarChart && guesses.length > 0) updateRadar(guesses[guesses.length-1], MATERIALS[guesses[guesses.length-1]], tMat);
+
+  toast(`The answer was: ${target.replace(/_/g,' ')}`, '', 4000);
+  gameOver = true;
+
+  // Update stats (loss)
+  const stats = getStats();
+  stats.played++;
+  stats.streak = 0;
+  saveStats(stats);
+  document.getElementById('streak-count').textContent = stats.streak;
+
+  // Replace action row with restart
+  document.getElementById('input-area').style.display = 'none';
+  document.getElementById('action-row').style.display = 'none';
+  document.getElementById('guess-input').disabled = true;
+  document.getElementById('guess-btn').disabled = true;
+
+  // Show a reveal screen version
+  const ws = document.getElementById('win-screen');
+  document.getElementById('win-emoji').textContent = '👁';
+  document.getElementById('win-title').textContent = 'Revealed';
+  document.getElementById('win-sub').textContent = 'The material was';
+  document.getElementById('win-material').textContent = target.replace(/_/g,' ');
+  document.getElementById('ws-guesses').textContent = guesses.length;
+  document.getElementById('ws-streak').textContent = stats.streak;
+  document.getElementById('win-flavor').textContent = tMat.flavor;
+  ws.classList.add('show');
+}
+
+// ── Win ───────────────────────────────────────────────────────
+function showWin(revealed) {
+  const tMat = MATERIALS[target];
+  const n = guesses.length;
+  document.getElementById('win-emoji').textContent = n===1?'🤯':n<=3?'🎯':n<=6?'🎉':'✅';
+  document.getElementById('win-title').textContent = n===1?'UNBELIEVABLE!':n<=3?'Excellent!':n<=6?'Nice Work!':'Got There!';
+  document.getElementById('win-sub').textContent = 'The material was';
+  document.getElementById('win-material').textContent = target.replace(/_/g,' ');
+  document.getElementById('win-flavor').textContent = tMat.flavor;
+  document.getElementById('ws-guesses').textContent = n;
+
+  const stats = getStats();
+  stats.played++; stats.wins++; stats.streak++;
+  if (stats.streak > stats.maxStreak) stats.maxStreak = stats.streak;
+  const key = Math.min(n,10).toString();
+  stats.dist[key] = (stats.dist[key]||0)+1;
+  saveStats(stats);
+
+  document.getElementById('ws-streak').textContent = stats.streak;
+  document.getElementById('streak-count').textContent = stats.streak;
+  gameOver = true;
+  document.getElementById('guess-input').disabled = true;
+  document.getElementById('guess-btn').disabled = true;
+  document.getElementById('hint-btn').disabled = true;
+  document.getElementById('reveal-btn').disabled = true;
+  document.getElementById('win-screen').classList.add('show');
+}
+
+// ── Autocomplete ──────────────────────────────────────────────
+function openAC(val) {
+  const ac = document.getElementById('autocomplete');
+  const v = val.toLowerCase().replace(/ /g,'_');
+  const filtered = matNames().filter(n =>
+    n.startsWith(v) || n.replace(/_/g,' ').startsWith(val.toLowerCase())
+  ).slice(0,9);
+  if (!filtered.length || !val.trim()) { closeAC(); return; }
+  acItems = filtered; acIndex = -1;
+  ac.innerHTML = filtered.map(n => {
+    const mat = MATERIALS[n];
+    const already = guesses.includes(n) ? '<span class="ac-already">✓</span>' : '';
+    return `<div class="ac-item" data-name="${n}">
+      <span>${n.replace(/_/g,' ')}</span>
+      <span class="ac-cat" style="color:${CAT_COLORS[mat.category]}">${mat.category}</span>
+      ${already}
+    </div>`;
+  }).join('');
+  ac.classList.add('open');
+  ac.querySelectorAll('.ac-item').forEach(el => {
+    el.addEventListener('mousedown', e => {
+      e.preventDefault();
+      document.getElementById('guess-input').value = el.dataset.name.replace(/_/g,' ');
+      closeAC();
+      submitGuess(el.dataset.name);
+    });
+  });
+}
+function closeAC() {
+  document.getElementById('autocomplete').classList.remove('open');
+  acItems = []; acIndex = -1;
+}
+function navigateAC(dir) {
+  const items = document.getElementById('autocomplete').querySelectorAll('.ac-item');
+  if (!items.length) return;
+  items[acIndex]?.classList.remove('active');
+  acIndex = (acIndex + dir + items.length) % items.length;
+  items[acIndex].classList.add('active');
+  document.getElementById('guess-input').value = acItems[acIndex].replace(/_/g,' ');
+}
+
+// ── Stats Modal ───────────────────────────────────────────────
+function renderStats() {
+  const stats = getStats();
+  document.getElementById('st-played').textContent = stats.played;
+  document.getElementById('st-winpct').textContent = stats.played>0 ? Math.round(stats.wins/stats.played*100)+'%' : '0%';
+  document.getElementById('st-streak').textContent = stats.streak;
+  document.getElementById('st-maxstreak').textContent = stats.maxStreak;
+  document.getElementById('st-streakbar').style.width = stats.maxStreak>0 ? Math.round(stats.streak/stats.maxStreak*100)+'%' : '0%';
+  const maxD = Math.max(1,...Object.values(stats.dist));
+  const distEl = document.getElementById('st-dist'); distEl.innerHTML = '';
+  for (let i=1;i<=10;i++) {
+    const c = stats.dist[i]||0;
+    distEl.innerHTML += `<div class="dist-row"><span class="dist-num">${i}</span><div class="dist-bar-wrap"><div class="dist-bar" style="width:${Math.max(10,Math.round(c/maxD*100))}%">${c||''}</div></div></div>`;
+  }
+}
+
+// ── Encyclopedia ──────────────────────────────────────────────
+let encCatFilter = 'All';
+let encSortCol   = 'name';
+let encSortAsc   = true;
+
+function renderEncyclopedia() {
+  const search = document.getElementById('enc-search').value.toLowerCase();
+  const tbody  = document.getElementById('enc-tbody');
+  let rows = matNames()
+    .filter(n => encCatFilter === 'All' || MATERIALS[n].category === encCatFilter)
+    .filter(n => n.replace(/_/g,' ').includes(search) || MATERIALS[n].category.toLowerCase().includes(search));
+
+  rows.sort((a,b) => {
+    let va = encSortCol === 'name' ? a : (encSortCol === 'category' ? MATERIALS[a].category : MATERIALS[a][encSortCol]);
+    let vb = encSortCol === 'name' ? b : (encSortCol === 'category' ? MATERIALS[b].category : MATERIALS[b][encSortCol]);
+    if (typeof va === 'string') { return encSortAsc ? va.localeCompare(vb) : vb.localeCompare(va); }
+    return encSortAsc ? va - vb : vb - va;
+  });
+
+  tbody.innerHTML = rows.map(n => {
+    const m = MATERIALS[n];
+    const cc = CAT_COLORS[m.category]||'#888';
+    const propCells = PROPERTIES.map(p => {
+      const v = m[p];
+      return `<td><div class="prop-bar-cell"><div class="prop-bar" style="width:${v*10}%;background:${cc}88"></div><span style="color:var(--text-dim)">${v}</span></div></td>`;
+    }).join('');
+    return `<tr>
+      <td>${n.replace(/_/g,' ')}</td>
+      <td><span class="enc-cat-badge" style="color:${cc};border-color:${cc}66">${m.category}</span></td>
+      ${propCells}
+      <td>${m.texture}</td>
+    </tr>`;
+  }).join('');
+
+  // Highlight sorted column header
+  document.querySelectorAll('#enc-table th').forEach(th => {
+    th.classList.toggle('sorted', th.dataset.col === encSortCol);
+  });
+}
+
+// ── Event Listeners ───────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  initGame();
+  document.getElementById('streak-count').textContent = getStats().streak;
+
+  // Input
+  const inp = document.getElementById('guess-input');
+  inp.addEventListener('input', e => openAC(e.target.value));
+  inp.addEventListener('keydown', e => {
+    if (e.key==='ArrowDown')  { e.preventDefault(); navigateAC(1); }
+    else if (e.key==='ArrowUp')   { e.preventDefault(); navigateAC(-1); }
+    else if (e.key==='Enter') { e.preventDefault(); acIndex>=0&&acItems[acIndex] ? submitGuess(acItems[acIndex]) : submitGuess(inp.value); }
+    else if (e.key==='Escape') closeAC();
+  });
+  inp.addEventListener('blur', () => setTimeout(closeAC, 200));
+  document.getElementById('guess-btn').addEventListener('click', () => submitGuess(inp.value));
+  document.getElementById('restart-btn').addEventListener('click', initGame);
+
+  // Action buttons
+  document.getElementById('hint-btn').addEventListener('click', useHint);
+  document.getElementById('reveal-btn').addEventListener('click', () => {
+    if (!confirm('Reveal the answer? This counts as a loss.')) return;
+    revealAnswer();
+  });
+
+  // Header buttons
+  document.getElementById('help-btn').addEventListener('click', () => document.getElementById('help-modal').classList.add('open'));
+  document.getElementById('stats-btn').addEventListener('click', () => { renderStats(); document.getElementById('stats-modal').classList.add('open'); });
+  document.getElementById('enc-btn').addEventListener('click', () => { renderEncyclopedia(); document.getElementById('enc-modal').classList.add('open'); });
+
+  // Modal close
+  document.querySelectorAll('[data-close]').forEach(btn => {
+    btn.addEventListener('click', () => document.getElementById(btn.dataset.close).classList.remove('open'));
+  });
+  document.querySelectorAll('.modal-overlay').forEach(el => {
+    el.addEventListener('click', e => { if (e.target===el) el.classList.remove('open'); });
+  });
+
+  // Encyclopedia filters
+  document.getElementById('enc-filters').addEventListener('click', e => {
+    if (!e.target.dataset.cat) return;
+    document.querySelectorAll('.enc-filter').forEach(f=>f.classList.remove('active'));
+    e.target.classList.add('active');
+    encCatFilter = e.target.dataset.cat;
+    renderEncyclopedia();
+  });
+  document.getElementById('enc-search').addEventListener('input', renderEncyclopedia);
+  document.getElementById('enc-table').querySelector('thead').addEventListener('click', e => {
+    const th = e.target.closest('th');
+    if (!th || !th.dataset.col) return;
+    if (encSortCol === th.dataset.col) encSortAsc = !encSortAsc;
+    else { encSortCol = th.dataset.col; encSortAsc = true; }
+    renderEncyclopedia();
+  });
+});
+</script>
+</body>
+</html>
